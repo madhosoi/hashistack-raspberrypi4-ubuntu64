@@ -1,0 +1,5 @@
+{
+  "metrics-addr" : "<public-ip>:9323",
+  "experimental" : true,
+  "dns" : ["172.17.0.1"]
+}

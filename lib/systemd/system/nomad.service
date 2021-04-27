@@ -1,0 +1,32 @@
+[Unit]
+Description=Nomad
+Documentation=https://nomadproject.io/docs/
+After=network.target
+After=consul.service
+Wants=consul.service
+Wants=cni-dhcp.socket
+
+[Service]
+Environment="DAEMON_ARGS=agent -config /etc/nomad"
+EnvironmentFile=-/etc/default/%p
+
+## https://github.com/hashicorp/nomad/issues/2560
+ExecStartPre=-/bin/rm -vf /var/lib/nomad/client/state.db
+
+ExecStart=/usr/bin/nomad $DAEMON_ARGS
+ExecStartPost=-/bin/sh -c 'for _ in 9 8 7 6 5 4 3 2 1 0; do /usr/bin/nomad node drain -disable -self && break || sleep 1; done'
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=-/usr/bin/nomad node drain -enable -self -force -yes
+TimeoutStopSec=15m
+KillSignal=SIGINT
+## !! Do not use "KillMode=process"; systemd should stop whatever Nomad left behind.
+## https://github.com/hashicorp/nomad/pull/4305#issuecomment-412978568
+
+Restart=on-failure
+LimitNOFILE=65536
+
+## PrivateTmp must be "false" to allow rkt's communication with "cni-dhcp.socket".
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target
